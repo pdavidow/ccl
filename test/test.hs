@@ -4,6 +4,7 @@ import Test.Tasty.HUnit
 import Data.Massiv.Array as A
 
 import ConnectedComponentLabeling (Connectivity(..), PixelL, Image, asssignLabels, asssignLabels_HighestComponentValue)
+import qualified ConnectedComponentLabeling_specialized as Cs
 import MassivExtensions (ifoldlMutM)
 
 main = defaultMain tests
@@ -222,6 +223,10 @@ toLists_image_BL_8 =
     ]
 
 
+asssignLabelsCs :: Cs.Connectivity -> Cs.Image -> Cs.ImageL
+asssignLabelsCs con arr = x where (_, x) = Cs.asssignLabels_HighestComponentValue con arr
+
+
 unitTests = testGroup "Unit tests" $ 
     [  testGroup "MassivExtensions" $    
         [ testCase "ifoldlMutM" $ do 
@@ -289,6 +294,56 @@ unitTests = testGroup "Unit tests" $
             (A.toLists $ asssignLabels Connect_8 image_B) @?= toLists_image_BL_8
         ]
 
+    ,  testGroup "ConnectedComponentLabeling Cs" $    
+        [ testCase "0 asssignLabels Connect_4" $ 
+            (A.toLists $ asssignLabelsCs Cs.Connect_4 image_0) @?= toLists_image_0L_4
+
+        , testCase "0 asssignLabels Connect_8" $ 
+            (A.toLists $ asssignLabelsCs Cs.Connect_8 image_0) @?= toLists_image_0L_8 
+
+        , testCase "a asssignLabels Connect_4" $ 
+            (A.toLists $ asssignLabelsCs Cs.Connect_4 image_a) @?= toLists_image_aL_4
+
+        , testCase "a asssignLabels Connect_8" $ 
+            (A.toLists $ asssignLabelsCs Cs.Connect_8 image_a) @?= toLists_image_aL_8 
+            
+        , testCase "b asssignLabels Connect_4" $ 
+            (A.toLists $ asssignLabelsCs Cs.Connect_4 image_b) @?= toLists_image_bL_4
+
+        , testCase "b asssignLabels Connect_8" $ 
+            (A.toLists $ asssignLabelsCs Cs.Connect_8 image_b) @?= toLists_image_bL_8                           
+            
+        , testCase "c asssignLabels Connect_4" $ 
+            (A.toLists $ asssignLabelsCs Cs.Connect_4 image_c) @?= toLists_image_cL_4
+
+        , testCase "c asssignLabels Connect_8" $ 
+            (A.toLists $ asssignLabelsCs Cs.Connect_8 image_c) @?= toLists_image_cL_8  
+                        
+        , testCase "d asssignLabels Connect_4" $ 
+            (A.toLists $ asssignLabelsCs Cs.Connect_4 image_d) @?= toLists_image_dL_4
+
+        , testCase "d asssignLabels Connect_8" $ 
+            (A.toLists $ asssignLabelsCs Cs.Connect_8 image_d) @?= toLists_image_dL_8                         
+                        
+        , testCase "e asssignLabels Connect_4" $ 
+            (A.toLists $ asssignLabelsCs Cs.Connect_4 image_e) @?= toLists_image_eL_4
+
+        , testCase "e asssignLabels Connect_8" $ 
+            (A.toLists $ asssignLabelsCs Cs.Connect_8 image_e) @?= toLists_image_eL_8  
+
+        , testCase "A asssignLabels Connect_4" $ 
+            (A.toLists $ asssignLabelsCs Cs.Connect_4 image_A) @?= toLists_image_AL_4
+
+        , testCase "A asssignLabels Connect_8" $ 
+            (A.toLists $ asssignLabelsCs Cs.Connect_8 image_A) @?= toLists_image_AL_8
+
+        , testCase "B asssignLabels Connect_4" $ 
+            (A.toLists $ asssignLabelsCs Cs.Connect_4 image_B) @?= toLists_image_BL_4
+
+        , testCase "B asssignLabels Connect_8" $ 
+            (A.toLists $ asssignLabelsCs Cs.Connect_8 image_B) @?= toLists_image_BL_8
+        ]
+
     ,  testGroup "HighestComponentValue" $
         [ testCase "f Connect_4" $ 
             let 
@@ -325,5 +380,44 @@ unitTests = testGroup "Unit tests" $
                 (n, _) = asssignLabels_HighestComponentValue Connect_8 image_B   
             in
                 n @?= 32                        
-        ]                 
+        ]     
+        
+
+    ,  testGroup "HighestComponentValue Cs" $
+        [ testCase "f Connect_4" $ 
+            let 
+                (n, _) = Cs.asssignLabels_HighestComponentValue Cs.Connect_4 image_f
+            in
+                n @?= 4             
+
+        , testCase "f Connect_8" $ 
+            let
+                (n, _) = Cs.asssignLabels_HighestComponentValue Cs.Connect_8 image_f   
+            in
+                n @?= 6 
+
+        , testCase "g Connect_4" $ 
+            let 
+                (n, _) = Cs.asssignLabels_HighestComponentValue Cs.Connect_4 image_g
+            in
+                n @?= 4             
+
+        , testCase "g Connect_8" $ 
+            let
+                (n, _) = Cs.asssignLabels_HighestComponentValue Cs.Connect_8 image_g   
+            in
+                n @?= 6          
+                
+        , testCase "B Connect_4" $ 
+            let 
+                (n, _) = Cs.asssignLabels_HighestComponentValue Cs.Connect_4 image_B
+            in
+                n @?= 25            
+
+        , testCase "B Connect_8" $ 
+            let
+                (n, _) = Cs.asssignLabels_HighestComponentValue Cs.Connect_8 image_B   
+            in
+                n @?= 32                        
+        ]         
     ]            
