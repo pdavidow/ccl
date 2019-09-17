@@ -74,25 +74,26 @@ asssignLabelsM con arr = do
         withDefaultLabels arr = A.map (\x -> (x, defaultLabel)) arr
 
     marr <- thawS $ computeAs U $ withDefaultLabels arr
+    let sz = msize marr
 
     let
         f :: Ix2 -> Label -> m Label
-        f ix acc = tryToLabelNext con marr ix acc
+        f ix acc = tryToLabelNext con sz marr ix acc
       
-    _ <- iFoldlMutM f (incrementLabel defaultLabel) marr
+    _ <- iFoldlMutM f (incrementLabel defaultLabel) sz marr
     unsafeFreeze (getComp arr) marr
 
 
-tryToLabelNext :: forall m . (Mutable U Ix2 PixelL, PrimMonad m) => Connectivity -> MArray (PrimState m) U Ix2 PixelL -> Ix2 -> Label -> m Label
-tryToLabelNext a b c d = tryToLabel False a b c d
+tryToLabelNext :: forall m . (Mutable U Ix2 PixelL, PrimMonad m) => Connectivity -> Sz Ix2 -> MArray (PrimState m) U Ix2 PixelL -> Ix2 -> Label -> m Label
+tryToLabelNext = tryToLabel False
 
 
-tryToLabelNeighbor :: forall m . (Mutable U Ix2 PixelL, PrimMonad m) => Connectivity -> MArray (PrimState m) U Ix2 PixelL -> Ix2 -> Label -> m Label
-tryToLabelNeighbor a b c d = tryToLabel True a b c d
+tryToLabelNeighbor :: forall m . (Mutable U Ix2 PixelL, PrimMonad m) => Connectivity -> Sz Ix2 -> MArray (PrimState m) U Ix2 PixelL -> Ix2 -> Label -> m Label
+tryToLabelNeighbor = tryToLabel True
 
 
-tryToLabel :: forall m . (Mutable U Ix2 PixelL, PrimMonad m) => Bool -> Connectivity -> MArray (PrimState m) U Ix2 PixelL -> Ix2 -> Label -> m Label
-tryToLabel isNeighbor con marr ix l = do 
+tryToLabel :: forall m . (Mutable U Ix2 PixelL, PrimMonad m) => Bool -> Connectivity -> Sz Ix2 -> MArray (PrimState m) U Ix2 PixelL -> Ix2 -> Label -> m Label
+tryToLabel isNeighbor con sz marr ix l = do 
     let
         isLabelable :: PixelL -> Bool
         isLabelable x = (isForeground x) && not (isLabeled x)
@@ -106,7 +107,7 @@ tryToLabel isNeighbor con marr ix l = do
     e <- unsafeRead marr ix
     if isLabelable e then do
         _ <- asssignLabel l
-        _ <- handleNeighbors con marr ix l
+        _ <- handleNeighbors con sz marr ix l
 
         if isNeighbor then pure l
         else pure $ incrementLabel l
@@ -114,15 +115,15 @@ tryToLabel isNeighbor con marr ix l = do
         pure l
 
 
-handleNeighbors :: forall m . (Mutable U Ix2 PixelL, PrimMonad m) => Connectivity -> MArray (PrimState m) U Ix2 PixelL -> Ix2 -> Label -> m ()
-handleNeighbors con marr ix l = do   
+handleNeighbors :: forall m . (Mutable U Ix2 PixelL, PrimMonad m) => Connectivity -> Sz Ix2 -> MArray (PrimState m) U Ix2 PixelL -> Ix2 -> Label -> m ()
+handleNeighbors con sz marr ix l = do   
     let
         f :: m () -> Ix2 -> m ()
         f acc offset = do
             let ix' = ix + offset
 
-            if isSafeIndex (msize marr) ix' then do
-                _ <- tryToLabelNeighbor con marr ix' l
+            if isSafeIndex sz ix' then do
+                _ <- tryToLabelNeighbor con sz marr ix' l
                 acc
             else 
                 acc
