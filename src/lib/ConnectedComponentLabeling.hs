@@ -31,7 +31,6 @@ type Label = Int
 type PixelVal = Int
 type Pixel = PixelVal
 type PixelL = (Pixel, Label)
-type PixelLIx = (PixelL, Ix2)
 type Image = Array U Ix2 Pixel
 type ImageL = Array U Ix2 PixelL     
 type CMap = Map.Map Label PixelVal

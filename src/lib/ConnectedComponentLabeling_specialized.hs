@@ -22,14 +22,11 @@ import MassivExtensions (iFoldlMutM)
 
 import Data.List as L
 import Control.Monad.ST
-import qualified Data.Map.Strict as Map
-import Safe (lastMay)
 
 type Label = Int
 type PixelVal = Int
 type Pixel = PixelVal
 type PixelL = (Pixel, Label)
-type PixelLIx = (PixelL, Ix2)
 type Image = Array U Ix2 Pixel
 type ImageL = Array U Ix2 PixelL     
 type Acc = (Label, PixelVal)
