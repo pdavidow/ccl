@@ -1,16 +1,14 @@
 module MassivExtensions
-    ( ifoldlMutM
+    ( iFoldlMutM
     )
     where  
 
-import Data.Massiv.Array
-import Data.Massiv.Array.Unsafe 
+import Data.Massiv.Array                  
 
 
--- provided by Alexey Kuleshevich
-ifoldlMutM :: (Mutable r ix a, PrimMonad m) =>  (ix -> t -> a -> m t) -> t -> MArray (PrimState m) r ix a -> m t
-ifoldlMutM f acc0 marr = 
+iFoldlMutM :: (Mutable r ix a, PrimMonad m) =>  (ix -> t -> m t) -> t -> MArray (PrimState m) r ix a -> m t
+iFoldlMutM f acc0 marr = 
     foldlM 
-        (\acc i -> unsafeLinearRead marr i >>= f (fromLinearIndex (msize marr) i) acc) 
+        (\acc i -> f (fromLinearIndex (msize marr) i) acc) 
         acc0 
-        (0 ..: totalElem (msize marr))                       
+        (0 ..: totalElem (msize marr))                        

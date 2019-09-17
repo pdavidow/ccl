@@ -1,11 +1,16 @@
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+
 import Test.Tasty  
 import Test.Tasty.HUnit
 
 import Data.Massiv.Array as A
+import Data.Massiv.Array.Unsafe as U
 
 import ConnectedComponentLabeling (Connectivity(..), PixelL, Image, asssignLabels, asssignLabels_HighestComponentValue)
 import qualified ConnectedComponentLabeling_specialized as Cs
-import MassivExtensions (ifoldlMutM)
+import MassivExtensions (iFoldlMutM)
 
 main = defaultMain tests
 
@@ -229,18 +234,29 @@ asssignLabelsCs con arr = x where (_, x) = Cs.asssignLabels_HighestComponentValu
 
 unitTests = testGroup "Unit tests" $ 
     [  testGroup "MassivExtensions" $    
-        [ testCase "ifoldlMutM" $ do 
-            let 
-                arr :: Array U Ix2 Int
-                arr = A.fromLists' Seq $
-                    [ [1,2,3]
-                    , [4,5,6]
-                    , [7,8,9]
-                    ]
+        [ testCase "iFoldlMutM" $ do 
+            let
+                f :: forall m . (Source U Ix2 Int, Mutable U Ix2 Int, PrimMonad m) => m [(Int, Ix2)]
+                f = do
+                    let 
+                        arr :: Array U Ix2 Int
+                        arr = A.fromLists' Seq $
+                            [ [1,2,3]
+                            , [4,5,6]
+                            , [7,8,9]
+                            ]
+                    
+                    marr <- thawS arr
 
-            marr <- thawS arr
-            let f ix acc e = pure $ acc ++ [(e, ix)]
-            result <- ifoldlMutM f [] marr 
+                    let 
+                        g :: Ix2 -> [(Int, Ix2)] -> m [(Int, Ix2)]
+                        g ix acc = do
+                            e <- unsafeRead marr ix
+                            pure $ acc ++ [(e, ix)] 
+
+                    iFoldlMutM g [] marr 
+
+            result <- f 
             result @?= [(1,0 :. 0),(2,0 :. 1),(3,0 :. 2),(4,1 :. 0),(5,1 :. 1),(6,1 :. 2),(7,2 :. 0),(8,2 :. 1),(9,2 :. 2)]
         ]
         

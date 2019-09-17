@@ -18,9 +18,8 @@ module ConnectedComponentLabeling_specialized
 import Data.Massiv.Array as A
 import Data.Massiv.Array.Mutable as M
 import Data.Massiv.Array.Unsafe as U
-import MassivExtensions (ifoldlMutM)
+import MassivExtensions (iFoldlMutM)
 
-import Data.Function ( (&) ) 
 import Data.List as L
 import Control.Monad.ST
 import qualified Data.Map.Strict as Map
@@ -46,7 +45,7 @@ asssignLabels :: (Source U Ix2 Pixel, Mutable U Ix2 PixelL) => Connectivity -> I
 asssignLabels con arr = runST $ asssignLabelsM con arr
 
 
-asssignLabelsM :: forall m . (Source U Ix2 Pixel, Mutable U Ix2 PixelL, PrimMonad m, MonadThrow m) => Connectivity -> Image -> m (PixelVal, ImageL)
+asssignLabelsM :: forall m . (Source U Ix2 Pixel, Mutable U Ix2 PixelL, PrimMonad m) => Connectivity -> Image -> m (PixelVal, ImageL)
 asssignLabelsM con arr = do
     let
         withDefaultLabels :: Array U Ix2 Pixel -> Array D Ix2 PixelL
@@ -55,23 +54,23 @@ asssignLabelsM con arr = do
     marr <- thawS $ computeAs U $ withDefaultLabels arr
 
     let
-        f :: Ix2 -> Acc -> PixelL -> m Acc
-        f ix acc e = tryToLabelNext con marr ix acc
+        f :: Ix2 -> Acc -> m Acc
+        f ix acc = tryToLabelNext con marr ix acc
       
-    (_, val) <- ifoldlMutM f (incrementLabel defaultLabel, 0) marr
+    (_, val) <- iFoldlMutM f (incrementLabel defaultLabel, 0) marr
     imageL <- unsafeFreeze (getComp arr) marr
     pure (val, imageL)
 
 
-tryToLabelNext :: forall m . (Mutable U Ix2 PixelL, PrimMonad m, MonadThrow m) => Connectivity -> MArray (PrimState m) U Ix2 PixelL -> Ix2 -> Acc -> m Acc
+tryToLabelNext :: forall m . (Mutable U Ix2 PixelL, PrimMonad m) => Connectivity -> MArray (PrimState m) U Ix2 PixelL -> Ix2 -> Acc -> m Acc
 tryToLabelNext a b c d = tryToLabel False a b c d
 
 
-tryToLabelNeighbor :: forall m . (Mutable U Ix2 PixelL, PrimMonad m, MonadThrow m) => Connectivity -> MArray (PrimState m) U Ix2 PixelL -> Ix2 -> Acc -> m Acc
+tryToLabelNeighbor :: forall m . (Mutable U Ix2 PixelL, PrimMonad m) => Connectivity -> MArray (PrimState m) U Ix2 PixelL -> Ix2 -> Acc -> m Acc
 tryToLabelNeighbor a b c d = tryToLabel True a b c d
 
 
-tryToLabel :: forall m . (Mutable U Ix2 PixelL, PrimMonad m, MonadThrow m) => Bool -> Connectivity -> MArray (PrimState m) U Ix2 PixelL -> Ix2 -> Acc -> m Acc
+tryToLabel :: forall m . (Mutable U Ix2 PixelL, PrimMonad m) => Bool -> Connectivity -> MArray (PrimState m) U Ix2 PixelL -> Ix2 -> Acc -> m Acc
 tryToLabel isNeighbor con marr ix lv@(l, v_current) = do 
     let
         v_contender = if isNeighbor then v_current else 0        
@@ -83,9 +82,9 @@ tryToLabel isNeighbor con marr ix lv@(l, v_current) = do
                 isLabeled (_, y) = y > defaultLabel
 
         asssignLabel :: Label -> m (PixelL)   
-        asssignLabel y = modifyM marr (\(x, _) -> pure (x, y)) ix
+        asssignLabel y = unsafeModify marr (\(x, _) -> pure (x, y)) ix
 
-    e <- readM marr ix
+    e <- unsafeRead marr ix
     if isLabelable e then do
         (v, _) <- asssignLabel l
         acc <- handleNeighbors con marr ix (l, v_contender + v)
@@ -97,7 +96,7 @@ tryToLabel isNeighbor con marr ix lv@(l, v_current) = do
         pure lv
 
 
-handleNeighbors :: forall m . (Mutable U Ix2 PixelL, PrimMonad m, MonadThrow m) => Connectivity -> MArray (PrimState m) U Ix2 PixelL -> Ix2 -> Acc -> m Acc
+handleNeighbors :: forall m . (Mutable U Ix2 PixelL, PrimMonad m) => Connectivity -> MArray (PrimState m) U Ix2 PixelL -> Ix2 -> Acc -> m Acc
 handleNeighbors con marr ix acc = do   
     let
         f :: m Acc -> Ix2 -> m Acc
