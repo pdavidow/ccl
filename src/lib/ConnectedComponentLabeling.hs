@@ -120,12 +120,12 @@ handleNeighbors con marr ix l = do
         f :: m () -> Ix2 -> m ()
         f acc offset = do
             let ix' = ix + offset
-            mbE <- M.read marr ix'
-            case mbE of
-                Just _ -> do
-                    _ <- tryToLabelNeighbor con marr ix' l
-                    acc
-                Nothing -> acc
+
+            if isSafeIndex (msize marr) ix' then do
+                _ <- tryToLabelNeighbor con marr ix' l
+                acc
+            else 
+                acc
 
     L.foldl' f (pure ()) $ neighborOffsets con    
 
