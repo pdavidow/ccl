@@ -55,7 +55,7 @@ asssignLabelsM con arr = do
         f :: Ix2 -> Acc -> m Acc
         f ix acc = tryToLabelNext con sz marr ix acc
       
-    (_, val) <- iFoldlMutM f (incrementLabel defaultLabel, 0) sz marr
+    (_, val) <- iFoldlMutM f (incrementLabel defaultLabel, 0) marr
     imageL <- unsafeFreeze (getComp arr) marr
     pure (val, imageL)
 

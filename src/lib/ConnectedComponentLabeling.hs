@@ -80,7 +80,7 @@ asssignLabelsM con arr = do
         f :: Ix2 -> Label -> m Label
         f ix acc = tryToLabelNext con sz marr ix acc
       
-    _ <- iFoldlMutM f (incrementLabel defaultLabel) sz marr
+    _ <- iFoldlMutM f (incrementLabel defaultLabel) marr
     unsafeFreeze (getComp arr) marr
 
 
