@@ -2,20 +2,29 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
+--- for QuickCheck -------------------
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE InstanceSigs #-}
+--------------------------------------
+
 import Test.Tasty  
 import Test.Tasty.HUnit
+import Test.Tasty.QuickCheck as QC
 
 import Data.Massiv.Array as A
 import Data.Massiv.Array.Unsafe as U
+import qualified Data.Vector as V
 
-import ConnectedComponentLabeling (Connectivity(..), PixelL, Image, asssignLabels, asssignLabels_HighestComponentValue)
-import qualified ConnectedComponentLabeling_specialized as Cs
+import CCL_Shared (Connectivity(..), PixelL, Image, ImageL)
+import qualified CCL
+import qualified CCL'
 import MassivExtensions (iFoldlMutM)
 
 main = defaultMain tests
 
 tests :: TestTree
-tests = testGroup "Tests" [unitTests] 
+tests = testGroup "Tests" [properties, unitTests] 
 
 
 image_0 :: Image  
@@ -228,16 +237,16 @@ toLists_image_BL_8 =
     ]
 
 
-asssignLabelsCs :: Cs.Connectivity -> Cs.Image -> Cs.ImageL
-asssignLabelsCs con arr = x where (_, x) = Cs.asssignLabels_HighestComponentValue con arr
+asssignLabels' :: Connectivity -> Image -> ImageL
+asssignLabels' con arr = x where (_, x) = CCL'.asssignLabels_HighestComponentValue con arr
 
-
+    
 unitTests = testGroup "Unit tests" $ 
     [  testGroup "MassivExtensions" $    
         [ testCase "iFoldlMutM" $ do 
             let
-                f :: forall m . (Source U Ix2 Int, Mutable U Ix2 Int, PrimMonad m) => m [(Int, Ix2)]
-                f = do
+                resultM :: forall m . (Source U Ix2 Int, Mutable U Ix2 Int, PrimMonad m) => m [(Int, Ix2)]
+                resultM = do
                     let 
                         arr :: Array U Ix2 Int
                         arr = A.fromLists' Seq $
@@ -249,191 +258,237 @@ unitTests = testGroup "Unit tests" $
                     marr <- thawS arr
 
                     let 
-                        g :: Ix2 -> [(Int, Ix2)] -> m [(Int, Ix2)]
-                        g ix acc = do
+                        f :: Ix2 -> [(Int, Ix2)] -> m [(Int, Ix2)]
+                        f ix acc = do
                             e <- unsafeRead marr ix
                             pure $ acc ++ [(e, ix)] 
 
-                    iFoldlMutM g [] marr 
+                    iFoldlMutM f [] marr 
 
-            result <- f 
+            result <- resultM 
             result @?= [(1,0 :. 0),(2,0 :. 1),(3,0 :. 2),(4,1 :. 0),(5,1 :. 1),(6,1 :. 2),(7,2 :. 0),(8,2 :. 1),(9,2 :. 2)]
         ]
         
-    ,  testGroup "ConnectedComponentLabeling" $    
+    ,  testGroup "CCL" $    
         [ testCase "0 asssignLabels Connect_4" $ 
-            (A.toLists $ asssignLabels Connect_4 image_0) @?= toLists_image_0L_4
+            (A.toLists $ CCL.asssignLabels Connect_4 image_0) @?= toLists_image_0L_4
 
         , testCase "0 asssignLabels Connect_8" $ 
-            (A.toLists $ asssignLabels Connect_8 image_0) @?= toLists_image_0L_8 
+            (A.toLists $ CCL.asssignLabels Connect_8 image_0) @?= toLists_image_0L_8 
 
         , testCase "a asssignLabels Connect_4" $ 
-            (A.toLists $ asssignLabels Connect_4 image_a) @?= toLists_image_aL_4
+            (A.toLists $ CCL.asssignLabels Connect_4 image_a) @?= toLists_image_aL_4
 
         , testCase "a asssignLabels Connect_8" $ 
-            (A.toLists $ asssignLabels Connect_8 image_a) @?= toLists_image_aL_8 
+            (A.toLists $ CCL.asssignLabels Connect_8 image_a) @?= toLists_image_aL_8 
             
         , testCase "b asssignLabels Connect_4" $ 
-            (A.toLists $ asssignLabels Connect_4 image_b) @?= toLists_image_bL_4
+            (A.toLists $ CCL.asssignLabels Connect_4 image_b) @?= toLists_image_bL_4
 
         , testCase "b asssignLabels Connect_8" $ 
-            (A.toLists $ asssignLabels Connect_8 image_b) @?= toLists_image_bL_8                           
+            (A.toLists $ CCL.asssignLabels Connect_8 image_b) @?= toLists_image_bL_8                           
             
         , testCase "c asssignLabels Connect_4" $ 
-            (A.toLists $ asssignLabels Connect_4 image_c) @?= toLists_image_cL_4
+            (A.toLists $ CCL.asssignLabels Connect_4 image_c) @?= toLists_image_cL_4
 
         , testCase "c asssignLabels Connect_8" $ 
-            (A.toLists $ asssignLabels Connect_8 image_c) @?= toLists_image_cL_8  
+            (A.toLists $ CCL.asssignLabels Connect_8 image_c) @?= toLists_image_cL_8  
                         
         , testCase "d asssignLabels Connect_4" $ 
-            (A.toLists $ asssignLabels Connect_4 image_d) @?= toLists_image_dL_4
+            (A.toLists $ CCL.asssignLabels Connect_4 image_d) @?= toLists_image_dL_4
 
         , testCase "d asssignLabels Connect_8" $ 
-            (A.toLists $ asssignLabels Connect_8 image_d) @?= toLists_image_dL_8                         
+            (A.toLists $ CCL.asssignLabels Connect_8 image_d) @?= toLists_image_dL_8                         
                         
         , testCase "e asssignLabels Connect_4" $ 
-            (A.toLists $ asssignLabels Connect_4 image_e) @?= toLists_image_eL_4
+            (A.toLists $ CCL.asssignLabels Connect_4 image_e) @?= toLists_image_eL_4
 
         , testCase "e asssignLabels Connect_8" $ 
-            (A.toLists $ asssignLabels Connect_8 image_e) @?= toLists_image_eL_8  
+            (A.toLists $ CCL.asssignLabels Connect_8 image_e) @?= toLists_image_eL_8  
 
         , testCase "A asssignLabels Connect_4" $ 
-            (A.toLists $ asssignLabels Connect_4 image_A) @?= toLists_image_AL_4
+            (A.toLists $ CCL.asssignLabels Connect_4 image_A) @?= toLists_image_AL_4
 
         , testCase "A asssignLabels Connect_8" $ 
-            (A.toLists $ asssignLabels Connect_8 image_A) @?= toLists_image_AL_8
+            (A.toLists $ CCL.asssignLabels Connect_8 image_A) @?= toLists_image_AL_8
 
         , testCase "B asssignLabels Connect_4" $ 
-            (A.toLists $ asssignLabels Connect_4 image_B) @?= toLists_image_BL_4
+            (A.toLists $ CCL.asssignLabels Connect_4 image_B) @?= toLists_image_BL_4
 
         , testCase "B asssignLabels Connect_8" $ 
-            (A.toLists $ asssignLabels Connect_8 image_B) @?= toLists_image_BL_8
+            (A.toLists $ CCL.asssignLabels Connect_8 image_B) @?= toLists_image_BL_8
         ]
 
-    ,  testGroup "ConnectedComponentLabeling Cs" $    
+    ,  testGroup "CCL' " $    
         [ testCase "0 asssignLabels Connect_4" $ 
-            (A.toLists $ asssignLabelsCs Cs.Connect_4 image_0) @?= toLists_image_0L_4
+            (A.toLists $ asssignLabels' Connect_4 image_0) @?= toLists_image_0L_4
 
         , testCase "0 asssignLabels Connect_8" $ 
-            (A.toLists $ asssignLabelsCs Cs.Connect_8 image_0) @?= toLists_image_0L_8 
+            (A.toLists $ asssignLabels' Connect_8 image_0) @?= toLists_image_0L_8 
 
         , testCase "a asssignLabels Connect_4" $ 
-            (A.toLists $ asssignLabelsCs Cs.Connect_4 image_a) @?= toLists_image_aL_4
+            (A.toLists $ asssignLabels' Connect_4 image_a) @?= toLists_image_aL_4
 
         , testCase "a asssignLabels Connect_8" $ 
-            (A.toLists $ asssignLabelsCs Cs.Connect_8 image_a) @?= toLists_image_aL_8 
+            (A.toLists $ asssignLabels' Connect_8 image_a) @?= toLists_image_aL_8 
             
         , testCase "b asssignLabels Connect_4" $ 
-            (A.toLists $ asssignLabelsCs Cs.Connect_4 image_b) @?= toLists_image_bL_4
+            (A.toLists $ asssignLabels' Connect_4 image_b) @?= toLists_image_bL_4
 
         , testCase "b asssignLabels Connect_8" $ 
-            (A.toLists $ asssignLabelsCs Cs.Connect_8 image_b) @?= toLists_image_bL_8                           
+            (A.toLists $ asssignLabels' Connect_8 image_b) @?= toLists_image_bL_8                           
             
         , testCase "c asssignLabels Connect_4" $ 
-            (A.toLists $ asssignLabelsCs Cs.Connect_4 image_c) @?= toLists_image_cL_4
+            (A.toLists $ asssignLabels' Connect_4 image_c) @?= toLists_image_cL_4
 
         , testCase "c asssignLabels Connect_8" $ 
-            (A.toLists $ asssignLabelsCs Cs.Connect_8 image_c) @?= toLists_image_cL_8  
+            (A.toLists $ asssignLabels' Connect_8 image_c) @?= toLists_image_cL_8  
                         
         , testCase "d asssignLabels Connect_4" $ 
-            (A.toLists $ asssignLabelsCs Cs.Connect_4 image_d) @?= toLists_image_dL_4
+            (A.toLists $ asssignLabels' Connect_4 image_d) @?= toLists_image_dL_4
 
         , testCase "d asssignLabels Connect_8" $ 
-            (A.toLists $ asssignLabelsCs Cs.Connect_8 image_d) @?= toLists_image_dL_8                         
+            (A.toLists $ asssignLabels' Connect_8 image_d) @?= toLists_image_dL_8                         
                         
         , testCase "e asssignLabels Connect_4" $ 
-            (A.toLists $ asssignLabelsCs Cs.Connect_4 image_e) @?= toLists_image_eL_4
+            (A.toLists $ asssignLabels' Connect_4 image_e) @?= toLists_image_eL_4
 
         , testCase "e asssignLabels Connect_8" $ 
-            (A.toLists $ asssignLabelsCs Cs.Connect_8 image_e) @?= toLists_image_eL_8  
+            (A.toLists $ asssignLabels' Connect_8 image_e) @?= toLists_image_eL_8  
 
         , testCase "A asssignLabels Connect_4" $ 
-            (A.toLists $ asssignLabelsCs Cs.Connect_4 image_A) @?= toLists_image_AL_4
+            (A.toLists $ asssignLabels' Connect_4 image_A) @?= toLists_image_AL_4
 
         , testCase "A asssignLabels Connect_8" $ 
-            (A.toLists $ asssignLabelsCs Cs.Connect_8 image_A) @?= toLists_image_AL_8
+            (A.toLists $ asssignLabels' Connect_8 image_A) @?= toLists_image_AL_8
 
         , testCase "B asssignLabels Connect_4" $ 
-            (A.toLists $ asssignLabelsCs Cs.Connect_4 image_B) @?= toLists_image_BL_4
+            (A.toLists $ asssignLabels' Connect_4 image_B) @?= toLists_image_BL_4
 
         , testCase "B asssignLabels Connect_8" $ 
-            (A.toLists $ asssignLabelsCs Cs.Connect_8 image_B) @?= toLists_image_BL_8
+            (A.toLists $ asssignLabels' Connect_8 image_B) @?= toLists_image_BL_8
         ]
 
-    ,  testGroup "HighestComponentValue" $
+    ,  testGroup "CCL HighestComponentValue" $
         [ testCase "f Connect_4" $ 
             let 
-                (n, _) = asssignLabels_HighestComponentValue Connect_4 image_f
+                (n, _) = CCL.asssignLabels_HighestComponentValue Connect_4 image_f
             in
                 n @?= 4             
 
         , testCase "f Connect_8" $ 
             let
-                (n, _) = asssignLabels_HighestComponentValue Connect_8 image_f   
+                (n, _) = CCL.asssignLabels_HighestComponentValue Connect_8 image_f   
             in
                 n @?= 6 
 
         , testCase "g Connect_4" $ 
             let 
-                (n, _) = asssignLabels_HighestComponentValue Connect_4 image_g
+                (n, _) = CCL.asssignLabels_HighestComponentValue Connect_4 image_g
             in
                 n @?= 4             
 
         , testCase "g Connect_8" $ 
             let
-                (n, _) = asssignLabels_HighestComponentValue Connect_8 image_g   
+                (n, _) = CCL.asssignLabels_HighestComponentValue Connect_8 image_g   
             in
                 n @?= 6          
                 
         , testCase "B Connect_4" $ 
             let 
-                (n, _) = asssignLabels_HighestComponentValue Connect_4 image_B
+                (n, _) = CCL.asssignLabels_HighestComponentValue Connect_4 image_B
             in
                 n @?= 25            
 
         , testCase "B Connect_8" $ 
             let
-                (n, _) = asssignLabels_HighestComponentValue Connect_8 image_B   
+                (n, _) = CCL.asssignLabels_HighestComponentValue Connect_8 image_B   
             in
                 n @?= 32                        
-        ]     
-        
+        ]             
 
-    ,  testGroup "HighestComponentValue Cs" $
+    ,  testGroup "CCL' HighestComponentValue " $
         [ testCase "f Connect_4" $ 
             let 
-                (n, _) = Cs.asssignLabels_HighestComponentValue Cs.Connect_4 image_f
+                (n, _) = CCL'.asssignLabels_HighestComponentValue Connect_4 image_f
             in
                 n @?= 4             
 
         , testCase "f Connect_8" $ 
             let
-                (n, _) = Cs.asssignLabels_HighestComponentValue Cs.Connect_8 image_f   
+                (n, _) = CCL'.asssignLabels_HighestComponentValue Connect_8 image_f   
             in
                 n @?= 6 
 
         , testCase "g Connect_4" $ 
             let 
-                (n, _) = Cs.asssignLabels_HighestComponentValue Cs.Connect_4 image_g
+                (n, _) = CCL'.asssignLabels_HighestComponentValue Connect_4 image_g
             in
                 n @?= 4             
 
         , testCase "g Connect_8" $ 
             let
-                (n, _) = Cs.asssignLabels_HighestComponentValue Cs.Connect_8 image_g   
+                (n, _) = CCL'.asssignLabels_HighestComponentValue Connect_8 image_g   
             in
                 n @?= 6          
                 
         , testCase "B Connect_4" $ 
             let 
-                (n, _) = Cs.asssignLabels_HighestComponentValue Cs.Connect_4 image_B
+                (n, _) = CCL'.asssignLabels_HighestComponentValue Connect_4 image_B
             in
                 n @?= 25            
 
         , testCase "B Connect_8" $ 
             let
-                (n, _) = Cs.asssignLabels_HighestComponentValue Cs.Connect_8 image_B   
+                (n, _) = CCL'.asssignLabels_HighestComponentValue Connect_8 image_B   
             in
                 n @?= 32                        
-        ]         
+        ]   
     ]            
+
+-- ===================================================
+
+
+properties :: TestTree
+properties = testGroup "Properties" [qcProps]
+
+
+-- stack repl
+-- > :load test\test.hs
+-- > generate arbitrary :: IO Image
+
+instance Arbitrary Image where
+    arbitrary :: Gen Image
+    arbitrary = do
+        numCols <- choose (1, 1000)
+        numRows <- choose (1, 1000)
+
+        e1 <- choose (1, 1000)
+        e2 <- choose (1, 1000)
+        e3 <- choose (1, 1000)
+
+        let g1 = choose (0, 1)
+        let g2 = choose (0, 2)
+        let g3 = choose (0, 9)
+        let g4 = elements [0, e1]
+        let g5 = elements [0, 0, e2]
+        let g6 = elements [0, e1, e2, e3]
+        let g7 = elements [0, 0, 0, e1, e2, e3]
+        let g8 = frequency [(99, pure 0), (1, pure 1)]
+        let g9 = frequency [(1, pure 0), (99, pure 1)]        
+        let g10 = frequency [(99, pure 0), (1, choose (1, 1000000000))]
+        let g11 = frequency [(1, pure 0), (99, choose (1, 1000000000))]
+        let gs = [g1, g2, g3, g4, g5, g6, g7, g8, g9, g10, g11]
+
+        vs <- V.replicateM numRows $ vectorOf numCols $ oneof gs
+        let vss = V.map (\i -> vs V.! (i - 1)) $ V.fromList [1 .. numRows]
+        pure $ A.fromLists' Seq $ V.toList vss
+
+
+qcProps = testGroup "(checked by QuickCheck)" 
+    [ QC.testProperty "CCL.Connect_4. asssignLabels_HighestComponentValue == CCL'.asssignLabels_HighestComponentValue" $
+        \x -> CCL.asssignLabels_HighestComponentValue Connect_4 (x :: Image) == CCL'.asssignLabels_HighestComponentValue Connect_4 (x :: Image)
+
+    , QC.testProperty "CCL.Connect_8. asssignLabels_HighestComponentValue == CCL'.asssignLabels_HighestComponentValue" $
+        \x -> CCL.asssignLabels_HighestComponentValue Connect_8 (x :: Image) == CCL'.asssignLabels_HighestComponentValue Connect_8 (x :: Image)
+    ]

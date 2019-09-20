@@ -2,14 +2,10 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module ConnectedComponentLabeling
-    ( Connectivity(..)
-    , Label
-    , Pixel
-    , PixelL
-    , Image
-    , ImageL
-    , asssignLabels
+-- Connected Component Labeling, with second pass for finding highest component value
+
+module CCL
+    ( asssignLabels
     , asssignLabels_HighestComponentValue
     )
     where
@@ -27,15 +23,9 @@ import Control.Monad.ST
 import qualified Data.Map.Strict as Map
 import Safe (lastMay)
 
-type Label = Int
-type PixelVal = Int
-type Pixel = PixelVal
-type PixelL = (Pixel, Label)
-type Image = Array U Ix2 Pixel
-type ImageL = Array U Ix2 PixelL     
-type CMap = Map.Map Label PixelVal
+import CCL_Shared (Connectivity(..), Label, PixelVal, Pixel, PixelL, Image, ImageL, ImageSize)
 
-data Connectivity = Connect_4 | Connect_8 deriving (Eq, Show)
+type CMap = Map.Map Label PixelVal
 
 
 asssignLabels_HighestComponentValue :: (Source U Ix2 Pixel, Mutable U Ix2 PixelL) => Connectivity -> Image -> (PixelVal, ImageL)
@@ -84,15 +74,15 @@ asssignLabelsM con arr = do
     unsafeFreeze (getComp arr) marr
 
 
-tryToLabelNext :: forall m . (Mutable U Ix2 PixelL, PrimMonad m) => Connectivity -> Sz Ix2 -> MArray (PrimState m) U Ix2 PixelL -> Ix2 -> Label -> m Label
+tryToLabelNext :: forall m . (Mutable U Ix2 PixelL, PrimMonad m) => Connectivity -> ImageSize -> MArray (PrimState m) U Ix2 PixelL -> Ix2 -> Label -> m Label
 tryToLabelNext = tryToLabel False
 
 
-tryToLabelNeighbor :: forall m . (Mutable U Ix2 PixelL, PrimMonad m) => Connectivity -> Sz Ix2 -> MArray (PrimState m) U Ix2 PixelL -> Ix2 -> Label -> m Label
+tryToLabelNeighbor :: forall m . (Mutable U Ix2 PixelL, PrimMonad m) => Connectivity -> ImageSize -> MArray (PrimState m) U Ix2 PixelL -> Ix2 -> Label -> m Label
 tryToLabelNeighbor = tryToLabel True
 
 
-tryToLabel :: forall m . (Mutable U Ix2 PixelL, PrimMonad m) => Bool -> Connectivity -> Sz Ix2 -> MArray (PrimState m) U Ix2 PixelL -> Ix2 -> Label -> m Label
+tryToLabel :: forall m . (Mutable U Ix2 PixelL, PrimMonad m) => Bool -> Connectivity -> ImageSize -> MArray (PrimState m) U Ix2 PixelL -> Ix2 -> Label -> m Label
 tryToLabel isNeighbor con sz marr ix l = do 
     let
         isLabelable :: PixelL -> Bool
@@ -115,7 +105,7 @@ tryToLabel isNeighbor con sz marr ix l = do
         pure l
 
 
-handleNeighbors :: forall m . (Mutable U Ix2 PixelL, PrimMonad m) => Connectivity -> Sz Ix2 -> MArray (PrimState m) U Ix2 PixelL -> Ix2 -> Label -> m ()
+handleNeighbors :: forall m . (Mutable U Ix2 PixelL, PrimMonad m) => Connectivity -> ImageSize -> MArray (PrimState m) U Ix2 PixelL -> Ix2 -> Label -> m ()
 handleNeighbors con sz marr ix l = do   
     let
         f :: m () -> Ix2 -> m ()

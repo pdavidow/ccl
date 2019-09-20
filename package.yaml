@@ -29,10 +29,11 @@ dependencies:
 - dlist
 - massiv
 - primitive
-- rio
+- vector
 
 - tasty
 - tasty-hunit
+- tasty-quickcheck
 
 library:
   source-dirs: 
@@ -74,3 +75,4 @@ tests:
     - ccl
     - tasty
     - tasty-hunit   
+    - tasty-quickcheck
