@@ -15,54 +15,70 @@ import Test.Tasty.QuickCheck as QC
 import Data.Massiv.Array as A
 import Data.Massiv.Array.Unsafe as U
 import qualified Data.Vector as V
+import qualified Data.Map.Strict as Map
 
-import CCL_Shared (Connectivity(..), PixelL, Image, ImageL)
 import qualified CCL
 import qualified CCL'
+import CCL_def (Connectivity(..), PixelL, Image, ImageL)
+import CCL_Util (componentCount, componentSizes, componentValues, sumComponentSizes, sumComponentValues)
 import MassivExtensions (iFoldlMutM)
 
+
 main = defaultMain tests
+
 
 tests :: TestTree
 tests = testGroup "Tests" [properties, unitTests] 
 
 
+asssignLabels' :: Connectivity -> Image -> ImageL
+asssignLabels' con arr = x where (_, x) = CCL'.asssignLabels_HighestComponentValue con arr
+
+
+maxCount_Connect_4 :: Sz Ix2 -> Int
+maxCount_Connect_4 (Sz (Ix2 i j)) = -- checker-board pattern
+    let
+        totalCount = i * j
+        half = totalCount `div` 2            
+    in
+        if even totalCount then half else half + 1
+    
+
+maxCount_Connect_8 :: Sz Ix2 -> Int
+maxCount_Connect_8 (Sz (Ix2 i j)) = -- packed non-touching
+    let
+        width = if even i then i else i + 1
+        maxPerRow = width `div` 2
+
+        height = if even j then j else j + 1
+        rows = height `div` 2
+    in
+        maxPerRow * rows  
+
+
 image_0 :: Image  
-image_0 = 
-    A.fromLists' Seq $   
-        [ [] ]
-
-
-toLists_image_0L_4 :: [[PixelL]]
-toLists_image_0L_4 = 
+image_0 = A.fromLists' Seq $   
     [ [] ]
 
-    
-toLists_image_0L_8 :: [[PixelL]]
-toLists_image_0L_8 = 
-    [ [] ]       
+
+toLists_image_0L :: [[PixelL]]
+toLists_image_0L = 
+    [ [] ]  
 
 
 image_a :: Image  
-image_a = 
-    A.fromLists' Seq $   
-        [ [0] ]
+image_a = A.fromLists' Seq $   
+    [ [0] ]
 
 
-toLists_image_aL_4 :: [[PixelL]]
-toLists_image_aL_4 = 
-    [ [(0,0)] ]
-
-    
-toLists_image_aL_8 :: [[PixelL]]
-toLists_image_aL_8 = 
+toLists_image_aL :: [[PixelL]]
+toLists_image_aL = 
     [ [(0,0)] ]
 
 
 image_b :: Image  
-image_b = 
-    A.fromLists' Seq $   
-        [ [30] ]
+image_b = A.fromLists' Seq $   
+    [ [30] ]
 
 
 toLists_image_bL_4 :: [[PixelL]]
@@ -76,9 +92,8 @@ toLists_image_bL_8 =
 
 
 image_c :: Image  
-image_c = 
-    A.fromLists' Seq $   
-        [ [30,50] ]
+image_c = A.fromLists' Seq $   
+    [ [30,50] ]
 
 
 toLists_image_cL_4 :: [[PixelL]]
@@ -92,11 +107,10 @@ toLists_image_cL_8 =
 
 
 image_d :: Image  
-image_d = 
-    A.fromLists' Seq $   
-        [ [30, 0]
-        , [ 0,50]
-        ]
+image_d = A.fromLists' Seq $   
+    [ [30, 0]
+    , [ 0,50]
+    ]
 
 
 toLists_image_dL_4 :: [[PixelL]]
@@ -114,12 +128,11 @@ toLists_image_dL_8 =
 
 
 image_e :: Image  
-image_e = 
-    A.fromLists' Seq $   
-        [ [30, 0, 0]
-        , [ 0,50, 0]
-        , [20,40,70]
-        ]
+image_e = A.fromLists' Seq $   
+    [ [30, 0, 0]
+    , [ 0,50, 0]
+    , [20,40,70]
+    ]
 
 
 toLists_image_eL_4 :: [[PixelL]]
@@ -139,36 +152,34 @@ toLists_image_eL_8 =
 
 
 image_f :: Image  
-image_f = 
-    A.fromLists' Seq $   
-        [ [2, 0]
-        , [0, 3]
-        , [0, 1]
-        ]    
+image_f = A.fromLists' Seq $   
+    [ [2, 0]
+    , [0, 3]
+    , [0, 1]
+    ]    
         
 
 image_g :: Image  
-image_g = 
-    A.fromLists' Seq $   
-        [ [0, 1, 0, 1, 0]
-        , [0, 0, 0, 2, 0]
-        , [2, 0, 0, 0, 0]
-        , [0, 3, 0, 0, 2]
-        , [0, 1, 0, 0, 0]
-        ]   
+image_g = A.fromLists' Seq $   
+    [ [0, 1, 0, 1, 0]
+    , [0, 0, 0, 2, 0]
+    , [2, 0, 0, 0, 0]
+    , [0, 3, 0, 0, 2]
+    , [0, 1, 0, 0, 0]
+    ]   
 
 
+-- http://www.imageprocessingplace.com/downloads_V3/root_downloads/tutorials/contour_tracing_Abeer_George_Ghuneim/connect.html
 image_A :: Image  
-image_A = -- http://www.imageprocessingplace.com/downloads_V3/root_downloads/tutorials/contour_tracing_Abeer_George_Ghuneim/connect.html
-    A.fromLists' Seq $   
-        [ [0,0,0,0,0,0,0]
-        , [0,0,0,1,1,0,0]
-        , [0,0,1,0,0,1,0]
-        , [0,1,0,0,1,0,0]
-        , [0,0,1,1,1,1,0]
-        , [0,1,0,0,0,0,0]
-        , [0,0,0,0,0,0,0]
-        ]
+image_A = A.fromLists' Seq $   
+    [ [0,0,0,0,0,0,0]
+    , [0,0,0,1,1,0,0]
+    , [0,0,1,0,0,1,0]
+    , [0,1,0,0,1,0,0]
+    , [0,0,1,1,1,1,0]
+    , [0,1,0,0,0,0,0]
+    , [0,0,0,0,0,0,0]
+    ]
 
 
 toLists_image_AL_4 :: [[PixelL]]
@@ -195,19 +206,19 @@ toLists_image_AL_8 =
     ]    
 
 
+-- https://en.wikipedia.org/wiki/Connected-component_labeling
 image_B :: Image   
-image_B = -- https://en.wikipedia.org/wiki/Connected-component_labeling
-    A.fromLists' Seq $   
-        [ [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-        , [0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0]
-        , [0,1,1,1,1,1,1,1,1,0,0,1,1,1,1,0,0]
-        , [0,0,0,1,1,1,1,0,0,0,1,1,1,1,0,0,0]
-        , [0,0,1,1,1,1,0,0,0,1,1,1,0,0,1,1,0]
-        , [0,1,1,1,0,0,1,1,0,0,0,1,1,1,0,0,0]
-        , [0,0,1,1,0,0,0,0,0,1,1,0,0,0,1,1,0]
-        , [0,0,0,0,0,0,1,1,1,1,0,0,1,1,1,1,0]
-        , [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-        ] 
+image_B = A.fromLists' Seq $   
+    [ [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+    , [0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0]
+    , [0,1,1,1,1,1,1,1,1,0,0,1,1,1,1,0,0]
+    , [0,0,0,1,1,1,1,0,0,0,1,1,1,1,0,0,0]
+    , [0,0,1,1,1,1,0,0,0,1,1,1,0,0,1,1,0]
+    , [0,1,1,1,0,0,1,1,0,0,0,1,1,1,0,0,0]
+    , [0,0,1,1,0,0,0,0,0,1,1,0,0,0,1,1,0]
+    , [0,0,0,0,0,0,1,1,1,1,0,0,1,1,1,1,0]
+    , [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+    ] 
         
 
 toLists_image_BL_4 :: [[PixelL]]
@@ -237,10 +248,7 @@ toLists_image_BL_8 =
     ]
 
 
-asssignLabels' :: Connectivity -> Image -> ImageL
-asssignLabels' con arr = x where (_, x) = CCL'.asssignLabels_HighestComponentValue con arr
-
-    
+unitTests :: TestTree
 unitTests = testGroup "Unit tests" $ 
     [  testGroup "MassivExtensions" $    
         [ testCase "iFoldlMutM" $ do 
@@ -271,16 +279,17 @@ unitTests = testGroup "Unit tests" $
         
     ,  testGroup "CCL" $    
         [ testCase "0 asssignLabels Connect_4" $ 
-            (A.toLists $ CCL.asssignLabels Connect_4 image_0) @?= toLists_image_0L_4
+            (A.toLists $ CCL.asssignLabels Connect_4 image_0) @?= toLists_image_0L
 
         , testCase "0 asssignLabels Connect_8" $ 
-            (A.toLists $ CCL.asssignLabels Connect_8 image_0) @?= toLists_image_0L_8 
+            (A.toLists $ CCL.asssignLabels Connect_8 image_0) @?= toLists_image_0L
 
         , testCase "a asssignLabels Connect_4" $ 
-            (A.toLists $ CCL.asssignLabels Connect_4 image_a) @?= toLists_image_aL_4
+            (A.toLists $ CCL.asssignLabels Connect_4 image_a) @?= toLists_image_aL
+
 
         , testCase "a asssignLabels Connect_8" $ 
-            (A.toLists $ CCL.asssignLabels Connect_8 image_a) @?= toLists_image_aL_8 
+            (A.toLists $ CCL.asssignLabels Connect_8 image_a) @?= toLists_image_aL
             
         , testCase "b asssignLabels Connect_4" $ 
             (A.toLists $ CCL.asssignLabels Connect_4 image_b) @?= toLists_image_bL_4
@@ -321,16 +330,16 @@ unitTests = testGroup "Unit tests" $
 
     ,  testGroup "CCL' " $    
         [ testCase "0 asssignLabels Connect_4" $ 
-            (A.toLists $ asssignLabels' Connect_4 image_0) @?= toLists_image_0L_4
+            (A.toLists $ asssignLabels' Connect_4 image_0) @?= toLists_image_0L
 
         , testCase "0 asssignLabels Connect_8" $ 
-            (A.toLists $ asssignLabels' Connect_8 image_0) @?= toLists_image_0L_8 
+            (A.toLists $ asssignLabels' Connect_8 image_0) @?= toLists_image_0L
 
         , testCase "a asssignLabels Connect_4" $ 
-            (A.toLists $ asssignLabels' Connect_4 image_a) @?= toLists_image_aL_4
+            (A.toLists $ asssignLabels' Connect_4 image_a) @?= toLists_image_aL
 
         , testCase "a asssignLabels Connect_8" $ 
-            (A.toLists $ asssignLabels' Connect_8 image_a) @?= toLists_image_aL_8 
+            (A.toLists $ asssignLabels' Connect_8 image_a) @?= toLists_image_aL
             
         , testCase "b asssignLabels Connect_4" $ 
             (A.toLists $ asssignLabels' Connect_4 image_b) @?= toLists_image_bL_4
@@ -443,7 +452,73 @@ unitTests = testGroup "Unit tests" $
                 (n, _) = CCL'.asssignLabels_HighestComponentValue Connect_8 image_B   
             in
                 n @?= 32                        
-        ]   
+        ]         
+
+    ,  testGroup "CCL_Util" $      
+        [ testGroup "componentCount" $        
+            [ testCase "0" $ 
+                componentCount (A.fromLists' Seq toLists_image_BL_4) @?= 6
+
+            , testCase "1" $ 
+                componentCount (A.fromLists' Seq toLists_image_BL_8) @?= 2            
+            ]
+
+        , testGroup "componentSizes" $  
+            [ testCase "0" $ 
+                (Map.toAscList $ componentSizes (A.fromLists' Seq toLists_image_eL_4)) @?= [(1,1), (2,4)]
+            ]    
+
+        , testGroup "componentValues" $  
+            [ testCase "0" $ 
+                (Map.toAscList $ componentValues (A.fromLists' Seq toLists_image_eL_4)) @?= [(1,30), (2,180)]
+            ]    
+
+        , testGroup "maxCount_Connect_4" $  
+            [ testCase "0 :. 0" $ 
+                maxCount_Connect_4 (Sz (0 :. 0)) @?= 0
+
+            , testCase "1 :. 1" $
+                maxCount_Connect_4 (Sz (1 :. 1)) @?= 1    
+
+            , testCase "2 :. 2" $ 
+                maxCount_Connect_4 (Sz (2 :. 2)) @?= 2  
+
+            , testCase "2 :. 3" $
+                maxCount_Connect_4 (Sz (2 :. 3)) @?= 3                
+
+            , testCase "3 :. 3" $  
+                maxCount_Connect_4 (Sz (3 :. 3)) @?= 5    
+                
+            , testCase "4 :. 4" $  
+                maxCount_Connect_4 (Sz (4 :. 4)) @?= 8  
+
+            ,  testCase "5 :. 5" $ 
+                maxCount_Connect_4 (Sz (5 :. 5)) @?= 13                           
+            ]       
+
+        , testGroup "maxCount_Connect_8" $  
+            [ testCase "0 :. 0" $ 
+                maxCount_Connect_8 (Sz (0 :. 0)) @?= 0
+
+            , testCase "1 :. 1" $
+                maxCount_Connect_8 (Sz (1 :. 1)) @?= 1    
+
+            , testCase "2 :. 2" $ 
+                maxCount_Connect_8 (Sz (2 :. 2)) @?= 1  
+
+            , testCase "2 :. 3" $
+                maxCount_Connect_8 (Sz (2 :. 3)) @?= 2
+
+            , testCase "3 :. 3" $  
+                maxCount_Connect_8 (Sz (3 :. 3)) @?= 4       
+                
+            , testCase "4 :. 4" $  
+                maxCount_Connect_8 (Sz (4 :. 4)) @?= 4                    
+
+            ,  testCase "5 :. 5" $ 
+                maxCount_Connect_8 (Sz (5 :. 5)) @?= 9                           
+            ]                 
+        ]  
     ]            
 
 -- ===================================================
@@ -485,10 +560,53 @@ instance Arbitrary Image where
         pure $ A.fromLists' Seq $ V.toList vss
 
 
-qcProps = testGroup "(checked by QuickCheck)" 
-    [ QC.testProperty "CCL.Connect_4. asssignLabels_HighestComponentValue == CCL'.asssignLabels_HighestComponentValue" $
+qcProps :: TestTree
+qcProps = testGroup "(checked by QuickCheck)"
+    [ QC.testProperty "Connect_4 | CCL.asssignLabels_HighestComponentValue == CCL'.asssignLabels_HighestComponentValue" $
         \x -> CCL.asssignLabels_HighestComponentValue Connect_4 (x :: Image) == CCL'.asssignLabels_HighestComponentValue Connect_4 (x :: Image)
 
-    , QC.testProperty "CCL.Connect_8. asssignLabels_HighestComponentValue == CCL'.asssignLabels_HighestComponentValue" $
+    , QC.testProperty "Connect_8 | CCL.asssignLabels_HighestComponentValue == CCL'.asssignLabels_HighestComponentValue" $
         \x -> CCL.asssignLabels_HighestComponentValue Connect_8 (x :: Image) == CCL'.asssignLabels_HighestComponentValue Connect_8 (x :: Image)
+    
+    , QC.testProperty "Connect_4 CCL | max componentCount" $ 
+        \x -> componentCount (CCL.asssignLabels Connect_4 (x :: Image)) <= maxCount_Connect_4 (size (x :: Image))
+
+    , QC.testProperty "Connect_4 CCL' | max componentCount" $ 
+        \x -> componentCount (asssignLabels' Connect_4 (x :: Image)) <= maxCount_Connect_4 (size (x :: Image))  
+        
+    , QC.testProperty "Connect_8 CCL | max componentCount" $ 
+        \x -> componentCount (CCL.asssignLabels Connect_8 (x :: Image)) <= maxCount_Connect_8 (size (x :: Image))
+
+    , QC.testProperty "Connect_8 CCL' | max componentCount" $ 
+        \x -> componentCount (asssignLabels' Connect_8 (x :: Image)) <= maxCount_Connect_8 (size (x :: Image))             
+    
+    , QC.testProperty "CCL | Connect_4 componentCount >= Connect_8 componentCount" $ 
+        \x -> componentCount (CCL.asssignLabels Connect_4 (x :: Image)) >= componentCount (CCL.asssignLabels Connect_8 (x :: Image))
+    
+    , QC.testProperty "CCL' | Connect_4 componentCount >= Connect_8 componentCount" $ 
+        \x -> componentCount (asssignLabels' Connect_4 (x :: Image)) >= componentCount (asssignLabels' Connect_8 (x :: Image))
+
+    , QC.testProperty "CCL Connect_4 | sumComponentSizes <= elemsCount " $ 
+        \x -> sumComponentSizes (CCL.asssignLabels Connect_4 (x :: Image)) <= elemsCount (x :: Image)
+       
+    , QC.testProperty "CCL' Connect_4 | sumComponentSizes <= elemsCount " $ 
+        \x -> sumComponentSizes (asssignLabels' Connect_4 (x :: Image)) <= elemsCount (x :: Image)     
+        
+    , QC.testProperty "CCL Connect_8 | sumComponentSizes <= elemsCount " $ 
+        \x -> sumComponentSizes (CCL.asssignLabels Connect_8 (x :: Image)) <= elemsCount (x :: Image)
+       
+    , QC.testProperty "CCL' Connect_8 | sumComponentSizes <= elemsCount " $ 
+        \x -> sumComponentSizes (asssignLabels' Connect_8 (x :: Image)) <= elemsCount (x :: Image)       
+               
+    , QC.testProperty "CCL | Connect_4 sumComponentSizes == Connect_8 sumComponentSizes " $ 
+        \x -> sumComponentSizes (CCL.asssignLabels Connect_4 (x :: Image)) == sumComponentSizes (CCL.asssignLabels Connect_8 (x :: Image))              
+               
+    , QC.testProperty "CCL' | Connect_4 sumComponentSizes == Connect_8 sumComponentSizes " $ 
+        \x -> sumComponentSizes (asssignLabels' Connect_4 (x :: Image)) == sumComponentSizes (asssignLabels' Connect_8 (x :: Image))          
+
+    , QC.testProperty "CCL | Connect_4 sumComponentValues == Connect_8 sumComponentValues " $ 
+        \x -> sumComponentValues (CCL.asssignLabels Connect_4 (x :: Image)) == sumComponentValues (CCL.asssignLabels Connect_8 (x :: Image))              
+               
+    , QC.testProperty "CCL' | Connect_4 sumComponentValues == Connect_8 sumComponentValues " $ 
+        \x -> sumComponentValues (asssignLabels' Connect_4 (x :: Image)) == sumComponentValues (asssignLabels' Connect_8 (x :: Image))          
     ]

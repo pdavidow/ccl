@@ -40,6 +40,13 @@ library:
     - src 
     - src/lib
 
+  exposed-modules:
+    - CCL_def
+    - CCL_Util
+    - CCL
+    - CCL'
+    - MassivExtensions   
+
 executables:
   ccl-exe:
     main:                Main.hs
@@ -59,6 +66,7 @@ executables:
     - -Wredundant-constraints
     - -Wcpp-undef
     - -Wmissing-export-lists   
+    
     dependencies:
     - ccl
 
@@ -71,6 +79,7 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     - -Wall
+
     dependencies:
     - ccl
     - tasty

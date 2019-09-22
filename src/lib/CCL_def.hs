@@ -1,4 +1,4 @@
-module CCL_Shared
+module CCL_def
     ( Connectivity(..)
     , Label
     , PixelVal
