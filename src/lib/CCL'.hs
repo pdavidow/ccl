@@ -2,11 +2,12 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
--- Connected Component Labeling, specialized in single pass for finding highest component value
+-- Connected Component Labeling, single pass also finds highest component value
 -- Implementation of "One component at a time" from https://en.wikipedia.org/wiki/Connected-component_labeling, but no need for stack for depth-first search
 
 module CCL'
-    ( asssignLabels_HighestComponentValue
+    ( highestComponentValue
+    , toLabeled
     )
     where
 
@@ -24,16 +25,22 @@ import CCL_unexposed (asssignLabel, defaultLabel, incrementLabel, isLabelable, n
 type Acc = (Label, PixelVal)
 
 
-asssignLabels_HighestComponentValue :: (Source U Ix2 Pixel, Mutable U Ix2 PixelL) => Connectivity -> Image -> (PixelVal, ImageL)
-asssignLabels_HighestComponentValue = asssignLabels
+highestComponentValue :: (Source U Ix2 Pixel, Mutable U Ix2 PixelL) => Connectivity -> Image -> PixelVal
+highestComponentValue con arr = x 
+    where (x, _) = toLabeled_highestComponentValue con arr
 
 
-asssignLabels :: (Source U Ix2 Pixel, Mutable U Ix2 PixelL) => Connectivity -> Image -> (PixelVal, ImageL)
-asssignLabels con arr = runST $ asssignLabelsM con arr
+toLabeled :: (Source U Ix2 Pixel, Mutable U Ix2 PixelL) => Connectivity -> Image -> ImageL
+toLabeled con arr = x
+    where (_, x) = toLabeled_highestComponentValue con arr
 
 
-asssignLabelsM :: forall m . (Source U Ix2 Pixel, Mutable U Ix2 PixelL, PrimMonad m) => Connectivity -> Image -> m (PixelVal, ImageL)
-asssignLabelsM con arr = do
+toLabeled_highestComponentValue :: (Source U Ix2 Pixel, Mutable U Ix2 PixelL) => Connectivity -> Image -> (PixelVal, ImageL)
+toLabeled_highestComponentValue con arr = runST $ toLabeledM con arr
+
+
+toLabeledM :: forall m . (Source U Ix2 Pixel, Mutable U Ix2 PixelL, PrimMonad m) => Connectivity -> Image -> m (PixelVal, ImageL)
+toLabeledM con arr = do
     marr <- thawS $ computeAs U $ withDefaultLabels arr
     let sz = msize marr
 
