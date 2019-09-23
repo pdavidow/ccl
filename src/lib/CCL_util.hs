@@ -1,4 +1,4 @@
-module CCL__util
+module CCL_util
     ( componentCount
     , componentSizes
     , componentValues

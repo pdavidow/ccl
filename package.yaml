@@ -42,7 +42,7 @@ library:
 
   exposed-modules:
     - CCL_def
-    - CCL__util
+    - CCL_util
     - CCL
     - CCL'
     - MassivExtensions   

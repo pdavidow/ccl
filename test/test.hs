@@ -20,7 +20,7 @@ import qualified Data.Map.Strict as Map
 import qualified CCL
 import qualified CCL'
 import CCL_def (Connectivity(..), PixelL, Image, ImageL)
-import CCL__util (componentCount, componentSizes, componentValues, highestComponentValue, sumComponentSizes, sumComponentValues)
+import CCL_util (componentCount, componentSizes, componentValues, highestComponentValue, sumComponentSizes, sumComponentValues)
 import MassivExtensions (iFoldlMutM)
 
 
@@ -413,7 +413,7 @@ unitTests = testGroup "Unit tests" $
             CCL'.highestComponentValue Connect_8 image_B @?= 32                       
         ]         
 
-    ,  testGroup "CCL__util" $      
+    ,  testGroup "CCL_util" $      
         [ testGroup "componentCount" $        
             [ testCase "0" $ 
                 componentCount (A.fromLists' Seq toLists_image_BL_4) @?= 6
